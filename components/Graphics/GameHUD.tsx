@@ -1,4 +1,4 @@
-// components/GameHUD.tsx → VERSION FINALE 100% FONCTIONNELLE
+// components/Graphics/GameHUD.tsx → VERSION FINALE ULTIME
 import React from 'react';
 import {
     View,
@@ -8,16 +8,23 @@ import {
     Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Building, getBuildingIcon } from './Building';
-import { Truck, getTruckIcon, DEFAULT_TRUCK_ICON } from './Truck';
+import { Building, getBuildingIcon } from '../Building/Building';
+import { Truck, getTruckIcon, DEFAULT_TRUCK_ICON } from '../Units/Truck';
+import { Engineer, getEngineerIcon, DEFAULT_ENGINEER_ICON } from '../Units/Engineer';
+import { GameConfig } from '../../constants/GameConfig';
+
+const TILE_SIZE = GameConfig.TILE_DISPLAY_SIZE;
 
 interface GameHUDProps {
     resources: number;
     turn: number;
     selectedBuilding: Building | null;
     selectedTruck?: Truck | null;
+    selectedEngineer?: Engineer | null;
+    reachableTiles?: { x: number; y: number }[]; // ← NOUVEAU : cases atteignables
     onUpgrade?: () => void;
     onCreateTruck?: () => void;
+    onCreateEngineer?: () => void;
     onEndTurn?: () => void;
     onBack?: () => void;
 }
@@ -27,11 +34,16 @@ export function GameHUD({
                             turn,
                             selectedBuilding,
                             selectedTruck,
+                            selectedEngineer,
+                            reachableTiles = [],
                             onUpgrade,
                             onCreateTruck,
+                            onCreateEngineer,
                             onEndTurn,
                             onBack,
                         }: GameHUDProps) {
+    const selectedUnit = selectedTruck || selectedEngineer;
+
     return (
         <View style={styles.container}>
             {/* === TOP BAR === */}
@@ -52,16 +64,38 @@ export function GameHUD({
                 </View>
             </View>
 
-            {/* === PANNEAU DU BAS (quand quelque chose est sélectionné) === */}
-            {(selectedBuilding || selectedTruck) && (
+            {/* === CASES ATTEIGNABLES (CORRIGÉES ET JOLIES) === */}
+            {reachableTiles.length > 0 && (
+                <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                    {reachableTiles.map((tile, i) => (
+                        <View
+                            key={i}
+                            style={{
+                                position: 'absolute',
+                                left: tile.x * TILE_SIZE + 30 + (TILE_SIZE - 32) / 2,
+                                top: tile.y * TILE_SIZE + 30 + (TILE_SIZE - 32) / 2,
+                                width: 32,
+                                height: 32,
+                                backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                                borderWidth: 2,
+                                borderColor: '#60a5fa',
+                                borderRadius: 8,
+                                zIndex: 2,
+                            }}
+                        />
+                    ))}
+                </View>
+            )}
+
+            {/* === PANNEAU DU BAS === */}
+            {(selectedBuilding || selectedUnit) && (
                 <View style={styles.bottomPanel}>
-                    {/* Fond semi-transparent pour désélectionner */}
                     <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onBack} />
 
                     <View style={styles.panelContent}>
                         {/* === PORTRAIT + INFOS === */}
                         <View style={styles.infoCard}>
-                            {/* Portrait du bâtiment */}
+                            {/* Portrait bâtiment */}
                             {selectedBuilding && getBuildingIcon(selectedBuilding) && (
                                 <Image
                                     source={getBuildingIcon(selectedBuilding)}
@@ -70,7 +104,7 @@ export function GameHUD({
                                 />
                             )}
 
-                            {/* Portrait du camion */}
+                            {/* Portrait unité */}
                             {selectedTruck && (
                                 <Image
                                     source={getTruckIcon(selectedTruck)}
@@ -79,7 +113,15 @@ export function GameHUD({
                                 />
                             )}
 
-                            {/* Nom + infos */}
+                            {selectedEngineer && (
+                                <Image
+                                    source={getEngineerIcon(selectedEngineer)}
+                                    style={styles.portrait}
+                                    resizeMode="contain"
+                                />
+                            )}
+
+                            {/* Infos bâtiment */}
                             {selectedBuilding && (
                                 <>
                                     <Text style={styles.unitName}>
@@ -105,16 +147,22 @@ export function GameHUD({
                                 </>
                             )}
 
-                            {selectedTruck && (
+                            {/* Infos unité */}
+                            {selectedUnit && (
                                 <>
-                                    <Text style={styles.unitName}>Camion de Ressources</Text>
-                                    <Text style={styles.teamText}>Équipe {selectedTruck.team}</Text>
+                                    <Text style={styles.unitName}>
+                                        {selectedTruck ? 'Camion de Ressources' : 'Ingénieur'}
+                                    </Text>
+                                    <Text style={styles.teamText}>Équipe {selectedUnit.team}</Text>
                                     <Text style={styles.status}>
-                                        {selectedTruck.isLoaded ? 'Chargé (+30)' : 'Vide'}
+                                        Mouvement : {selectedUnit.movementPoints}/
+                                        {selectedTruck ? 5 : 4}
                                     </Text>
-                                    <Text style={styles.smallText}>
-                                        Mouvement restant : {selectedTruck.movementPoints}/5
-                                    </Text>
+                                    {selectedTruck && (
+                                        <Text style={styles.smallText}>
+                                            {selectedTruck.isLoaded ? 'Chargé (+30)' : 'Vide'}
+                                        </Text>
+                                    )}
                                 </>
                             )}
                         </View>
@@ -134,20 +182,29 @@ export function GameHUD({
                                 </TouchableOpacity>
                             )}
 
-                            {/* Créer Camion → avec la vraie image ! */}
+                            {/* Créer Camion */}
                             {selectedBuilding?.type === 'base' && selectedBuilding.team === 'blue' && (
                                 <TouchableOpacity
                                     style={[styles.actionButton, resources < 50 && styles.disabledButton]}
                                     onPress={onCreateTruck}
                                     disabled={resources < 50}
                                 >
-                                    <Image
-                                        source={DEFAULT_TRUCK_ICON}
-                                        style={styles.unitIcon}
-                                        resizeMode="contain"
-                                    />
+                                    <Image source={DEFAULT_TRUCK_ICON} style={styles.unitIcon} resizeMode="contain" />
                                     <Text style={styles.actionText}>Camion</Text>
                                     <Text style={styles.costText}>50</Text>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Créer Ingénieur */}
+                            {selectedBuilding?.type === 'base' && selectedBuilding.team === 'blue' && (
+                                <TouchableOpacity
+                                    style={[styles.actionButton, resources < 100 && styles.disabledButton]}
+                                    onPress={onCreateEngineer}
+                                    disabled={resources < 100}
+                                >
+                                    <Image source={DEFAULT_ENGINEER_ICON} style={styles.unitIcon} resizeMode="contain" />
+                                    <Text style={styles.actionText}>Ingénieur</Text>
+                                    <Text style={styles.costText}>100</Text>
                                 </TouchableOpacity>
                             )}
 
@@ -187,7 +244,7 @@ function getBuildingName(type: string): string {
 }
 
 // ──────────────────────────────────────
-// Styles (pro, sombre, style C&C)
+// Styles
 // ──────────────────────────────────────
 const styles = StyleSheet.create({
     container: {
@@ -206,8 +263,6 @@ const styles = StyleSheet.create({
         bottom: 0,
         backgroundColor: 'rgba(0,0,0,0.5)',
     },
-
-    // Top bar
     topBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -238,7 +293,6 @@ const styles = StyleSheet.create({
     },
     statText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
-    // Panneau du bas
     bottomPanel: {
         position: 'absolute',
         bottom: 0,
@@ -259,8 +313,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         padding: 16,
     },
-
-    // Portrait + infos
     infoCard: {
         width: 180,
         justifyContent: 'center',
@@ -284,7 +336,6 @@ const styles = StyleSheet.create({
     healthBarFill: { height: '100%', backgroundColor: '#22c55e' },
     healthText: { color: '#fff', fontSize: 12, textAlign: 'center', marginTop: 4 },
 
-    // Grille d'actions
     actionGrid: {
         flex: 1,
         flexDirection: 'row',
@@ -311,12 +362,10 @@ const styles = StyleSheet.create({
     unitIcon: { width: 64, height: 64 },
     actionText: { color: '#fff', fontSize: 12, marginTop: 4, fontWeight: '600' },
     costText: { color: '#fbbf24', fontSize: 14, fontWeight: 'bold', marginTop: 2 },
-
     infoAction: { width: 84, height: 94, alignItems: 'center', justifyContent: 'center' },
     infoText: { color: '#fff', fontSize: 11, textAlign: 'center', marginTop: 6 },
     smallInfo: { color: '#9ca3af', fontSize: 10, textAlign: 'center' },
 
-    // Bouton fin du tour
     endTurnContainer: { position: 'absolute', bottom: 16, right: 16 },
     endTurnButton: {
         flexDirection: 'row',

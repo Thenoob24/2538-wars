@@ -10,8 +10,8 @@ import {
     Dimensions,
     TouchableWithoutFeedback,
 } from 'react-native';
-import { getTileAsset } from '../components/TileAssets';
-import { GameConfig } from '../constants/GameConfig';
+import { getTileAsset } from './TileAssets';
+import { GameConfig } from '../../constants/GameConfig';
 
 const TILE_SIZE = GameConfig.TILE_DISPLAY_SIZE;
 

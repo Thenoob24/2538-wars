@@ -1,7 +1,7 @@
 // components/Building.tsx
 import React from 'react';
 import { View, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { GameConfig } from '../constants/GameConfig';
+import { GameConfig } from '../../constants/GameConfig';
 
 const TILE_SIZE = GameConfig.TILE_DISPLAY_SIZE;
 
@@ -31,11 +31,18 @@ interface BuildingComponentProps {
 const BUILDING_ASSETS: Record<BuildingTeam, Record<BuildingType, Record<number, any>>> = {
     blue: {
         base: {
-            1: require('../assets/faction/United-Nation/Building/Headquarter/base_blue_level1.png'),
-            2: require('../assets/faction/United-Nation/Building/Headquarter/base_blue_level2.png'),
-            3: require('../assets/faction/United-Nation/Building/Headquarter/base_blue_level3.png'),
-            4: require('../assets/faction/United-Nation/Building/Headquarter/base_blue_level4.png'),
-            5: require('../assets/faction/United-Nation/Building/Headquarter/base_blue_level5.png'),
+            1: require('../../assets/faction/United-Nation/Building/Headquarter/base_blue_level1.png'),
+            2: require('../../assets/faction/United-Nation/Building/Headquarter/base_blue_level2.png'),
+            3: require('../../assets/faction/United-Nation/Building/Headquarter/base_blue_level3.png'),
+            4: require('../../assets/faction/United-Nation/Building/Headquarter/base_blue_level4.png'),
+            5: require('../../assets/faction/United-Nation/Building/Headquarter/base_blue_level5.png'),
+        },
+        barrack: {
+            1: require('../../assets/faction/United-Nation/Building/Barrack/barrack_blue_level1.png'),
+            2: require('../../assets/faction/United-Nation/Building/Barrack/barrack_blue_level2.png'),
+            3: require('../../assets/faction/United-Nation/Building/Barrack/barrack_blue_level3.png'),
+            4: require('../../assets/faction/United-Nation/Building/Barrack/barrack_blue_level4.png'),
+            5: require('../../assets/faction/United-Nation/Building/Barrack/barrack_blue_level5.png'),
         },
         turret: {},
         factory: {},
@@ -51,11 +58,11 @@ const BUILDING_ASSETS: Record<BuildingTeam, Record<BuildingType, Record<number, 
         turret: {},
         factory: {},
         mine: {
-            1: require('../assets/faction/Neutral/Building/Mine/base_gold_level1.png'),
-            2: require('../assets/faction/Neutral/Building/Mine/base_gold_level2.png'),
-            3: require('../assets/faction/Neutral/Building/Mine/base_gold_level3.png'),
-            4: require('../assets/faction/Neutral/Building/Mine/base_gold_level4.png'),
-            5: require('../assets/faction/Neutral/Building/Mine/base_gold_level5.png'),
+            1: require('../../assets/faction/Neutral/Building/Mine/base_gold_level1.png'),
+            2: require('../../assets/faction/Neutral/Building/Mine/base_gold_level2.png'),
+            3: require('../../assets/faction/Neutral/Building/Mine/base_gold_level3.png'),
+            4: require('../../assets/faction/Neutral/Building/Mine/base_gold_level4.png'),
+            5: require('../../assets/faction/Neutral/Building/Mine/base_gold_level5.png'),
         },
     },
 };

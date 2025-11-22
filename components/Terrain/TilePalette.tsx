@@ -12,7 +12,7 @@ import {
     SafeAreaView,
     Dimensions,
 } from 'react-native';
-import { getTileAsset, TILESET_CONFIG } from '../components/TileAssets';
+import { getTileAsset, TILESET_CONFIG } from './TileAssets';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

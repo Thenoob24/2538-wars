@@ -21,7 +21,7 @@ export const GameConfig = {
 
     // Chemins des assets
     ASSETS: {
-        TILESET: require('@/assets/tiles/terrain/tileset_terrain.png'),
+
     },
 };
 

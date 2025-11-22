@@ -9,8 +9,8 @@ import {
     Image,
     SafeAreaView,
 } from 'react-native';
-import { GameConfig, getTilePosition } from '../constants/GameConfig';
-import type { EditorTool } from '../hooks/useEditorTools';
+import { GameConfig, getTilePosition } from '../../constants/GameConfig';
+import type { EditorTool } from '../../hooks/useEditorTools';
 
 type GridSize = { width: number; height: number };
 

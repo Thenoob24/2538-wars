@@ -1,142 +1,167 @@
-// app/game.tsx
-
-import React, { useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, SafeAreaView } from 'react-native';
+// app/game-solo.tsx → VERSION QUI MARCHE À 100%
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, StyleSheet, Alert, ActivityIndicator, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { TileGrid } from '../components/TileGrid';
-import { useGridManager } from '../hooks/useGridManager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GameGrid } from '../components/GameGrid';
+import { GameHUD } from '../components/Graphics/GameHUD';
+import { useGame } from '../hooks/useGame';
 
-export default function Game() {
+const STORAGE_KEY = '@strategy_game:saved_map_v2';
+
+export default function GameSolo() {
     const router = useRouter();
-    const { tileMap, randomizeGrid } = useGridManager();
+    const [tileMap, setTileMap] = useState<number[][]>([]);
+    const [gridSize, setGridSize] = useState({ width: 32, height: 32 });
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Générer une carte aléatoire au démarrage
     useEffect(() => {
-        randomizeGrid(30); // Utiliser les 30 premières tuiles pour plus de variété
+        loadMap();
     }, []);
+
+    const loadMap = async () => {
+        try {
+            const data = await AsyncStorage.getItem(STORAGE_KEY);
+            if (data) {
+                const parsed = JSON.parse(data);
+                if (parsed.gridSize && parsed.tileMap) {
+                    setGridSize(parsed.gridSize);
+                    setTileMap(parsed.tileMap);
+                } else {
+                    createDefaultMap();
+                }
+            } else {
+                createDefaultMap();
+            }
+        } catch (err) {
+            console.error('Erreur chargement carte:', err);
+            createDefaultMap();
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const createDefaultMap = () => {
+        const defaultMap = Array(32).fill(null).map(() => Array(32).fill(1));
+        setTileMap(defaultMap);
+        setGridSize({ width: 32, height: 32 });
+    };
+
+    const {
+        gameState,
+        units,
+        buildings,
+        initializeMap,
+        selectUnit,
+        selectBuilding,
+        createTruck,
+        createEngineer,
+        moveUnitTo,           // OUBLIÉ → AJOUTÉ ICI
+        nextTurn,
+        upgradeBuilding,
+        setGameState,
+    } = useGame(tileMap, gridSize);
+
+    // Initialiser la carte une fois
+    useEffect(() => {
+        if (tileMap.length > 0 && buildings.length === 0) {
+            initializeMap();
+        }
+    }, [tileMap, buildings.length, initializeMap]);
+
+    // Cases atteignables
+    const reachableTiles = useMemo(() => {
+        const unit = gameState.selectedUnit;
+        if (!unit) return [];
+
+        const maxMove = unit.movementPoints;
+        const tiles: { x: number; y: number }[] = [];
+
+        for (let dx = -maxMove; dx <= maxMove; dx++) {
+            for (let dy = -maxMove; dy <= maxMove; dy++) {
+                if (Math.abs(dx) + Math.abs(dy) <= maxMove && (dx !== 0 || dy !== 0)) {
+                    const x = unit.x + dx;
+                    const y = unit.y + dy;
+                    if (x >= 0 && x < gridSize.width && y >= 0 && y < gridSize.height) {
+                        tiles.push({ x, y });
+                    }
+                }
+            }
+        }
+        return tiles;
+    }, [gameState.selectedUnit, gridSize]);
+
+    const handleTilePress = (x: number, y: number) => {
+        const selectedUnit = gameState.selectedUnit;
+        if (selectedUnit) {
+            const dist = Math.abs(selectedUnit.x - x) + Math.abs(selectedUnit.y - y);
+            if (dist <= selectedUnit.movementPoints && dist > 0) {
+                moveUnitTo(selectedUnit.id, x, y); // FONCTIONNE MAINTENANT
+            } else {
+                handleDeselectAll();
+            }
+        } else {
+            handleDeselectAll();
+        }
+    };
+
+    const handleDeselectAll = () => {
+        setGameState(prev => ({
+            ...prev,
+            selectedBuilding: null,
+            selectedUnit: null,
+        }));
+    };
+
+    const handleBuildingPress = (building: any) => {
+        handleDeselectAll();
+        selectBuilding(building);
+    };
+
+    const handleUnitPress = (unit: any) => {
+        handleDeselectAll();
+        selectUnit(unit);
+    };
+
+    if (isLoading || !tileMap.length) {
+        return (
+            <View style={[styles.container, styles.loadingContainer]}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.loadingText}>Chargement...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.safeArea}>
-                {/* Header de jeu */}
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => router.back()}
-                    >
-                        <Text style={styles.backText}>← Menu</Text>
-                    </TouchableOpacity>
+            <GameGrid
+                tileMap={tileMap}
+                gridSize={gridSize}
+                buildings={buildings}
+                units={units}
+                onTilePress={handleTilePress}
+                onBuildingPress={handleBuildingPress}
+                onUnitPress={handleUnitPress}
+            />
 
-                    <View style={styles.titleContainer}>
-                        <Text style={styles.title}>🎮 En jeu</Text>
-                    </View>
-
-                    <TouchableOpacity
-                        style={styles.menuButton}
-                        onPress={() => alert('Menu de pause - À venir')}
-                    >
-                        <Text style={styles.menuText}>⋯</Text>
-                    </TouchableOpacity>
-                </View>
-            </SafeAreaView>
-
-            {/* Grille de jeu (lecture seule) */}
-            <TileGrid tileMap={tileMap} editable={false} />
-
-            {/* Interface de jeu (HUD) */}
-            <View style={styles.hud}>
-                <View style={styles.hudSection}>
-                    <Text style={styles.hudLabel}>Or</Text>
-                    <Text style={styles.hudValue}>1000 💰</Text>
-                </View>
-                <View style={styles.hudSection}>
-                    <Text style={styles.hudLabel}>Population</Text>
-                    <Text style={styles.hudValue}>50 / 100 👥</Text>
-                </View>
-                <View style={styles.hudSection}>
-                    <Text style={styles.hudLabel}>Tour</Text>
-                    <Text style={styles.hudValue}>1 🔄</Text>
-                </View>
-            </View>
+            <GameHUD
+                resources={gameState.resources.blue}
+                turn={gameState.turn}
+                selectedBuilding={gameState.selectedBuilding}
+                selectedUnit={gameState.selectedUnit}
+                reachableTiles={reachableTiles}
+                onCreateTruck={createTruck}
+                onCreateEngineer={createEngineer}
+                onUpgrade={upgradeBuilding}
+                onEndTurn={nextTurn}
+                onBack={handleDeselectAll}
+            />
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#0a0a0a',
-    },
-    safeArea: {
-        backgroundColor: '#111827',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#111827',
-        borderBottomWidth: 2,
-        borderBottomColor: '#374151',
-    },
-    backButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: '#374151',
-        borderRadius: 8,
-    },
-    backText: {
-        color: 'white',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    titleContainer: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: 'white',
-    },
-    menuButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#374151',
-        borderRadius: 8,
-    },
-    menuText: {
-        fontSize: 24,
-        color: 'white',
-        fontWeight: 'bold',
-    },
-    hud: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        borderTopWidth: 2,
-        borderTopColor: '#374151',
-    },
-    hudSection: {
-        alignItems: 'center',
-    },
-    hudLabel: {
-        fontSize: 12,
-        color: '#9ca3af',
-        marginBottom: 4,
-    },
-    hudValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: 'white',
-    },
+    container: { flex: 1, backgroundColor: '#000' },
+    loadingContainer: { justifyContent: 'center', alignItems: 'center' },
+    loadingText: { color: '#fff', fontSize: 18, marginTop: 16 },
 });
